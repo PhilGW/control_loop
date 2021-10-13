@@ -68,6 +68,7 @@ async def main():
 
     #asyncio.get_event_loop().run_until_complete(hello())
 
+
     uri = "ws://127.0.0.1:8000/ws/devices/1"
     async with websockets.connect(uri) as websocket:
         while True:
