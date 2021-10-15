@@ -1,0 +1,25 @@
+Notes on asyncio:
+
+Tutorial on ansyncio:
+https://bbc.github.io/cloudfit-public-docs/asyncio/asyncio-part-1
+
+When a coroutine "yields" control, it returns control to the code that called it, but keeps its place, kind of like a
+bookmark. Then the next time it gets called, it will pick up from the bookmark.
+
+https://stackoverflow.com/questions/55234194/why-do-i-have-to-use-async-with-when-using-the-aiohttp-module
+"It's not like you must use 'async with',
+it's just a fail-safe device for ensuring that the resources get cleaned up."
+
+async def fetch(session, url):
+    async with session.get(url) as response:
+        return await response.text()
+
+You can re-write it as:
+
+async def fetch(session, url):
+    response = await session.get(url)
+    return await response.text()
+
+https://stackoverflow.com/questions/30361824/asynchronous-exception-handling-in-python
+asyncio.wait doesn't actually consume the Futures passed to it,
+it just waits for them to complete, and then returns the Future objects:
