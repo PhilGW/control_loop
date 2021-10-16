@@ -28,7 +28,7 @@ async def main():
     # The first 4 are mandatory: timestamp, log_interval, dev_id, device_active, expt_id. The rest can be customized.
     device_params = {
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'log_interval': 1.0,  # How often to log data to the database, in seconds
+        'update_interval': 5.0,  # How often to log data to the database, in seconds
         'replot_interval': 5.0,
         'dev_id': 'dev01',
         'device_active': False,  # initially, device is not doing anything
@@ -63,52 +63,69 @@ async def main():
             time.sleep(5)
 
     #pdb.set_trace()
-    my_controller = DeviceController(ws, 1)
-    #data_transmission_task = asyncio.create_task( transmit_data_periodically(ws) )
-    #data_transmission_task = asyncio.create_task(my_controller.run_controller(ws))
-    data_transmission_task = my_controller.get_asycio_task_for_controller()
+    my_controller = DeviceController(ws, 1, device_params=device_params) #Instantiate the controller
     listen_task = asyncio.create_task( listen_for_instructions(ws, my_controller) )
-    # data_transmission_task keeps sending out data every 5 seconds forever
-    await data_transmission_task
-    await listen_task
 
-    #TODO: Use asyncio.gather to call all of the sensors at once and then send the full message
+
+    await my_controller.run_controller_forever()  #Create the task and run it. This will need to happen once for each controller.
+    await listen_task #Listen, and relay any data to the controllers
+
+    # TODO: Use asyncio.gather to call all of the sensors at once and then send the full message
     # TODO: Write device-io functions so that they use context manager methods (__enter__() and __exit__()) and can therefor be used with 'with'
 
 class DeviceController():
     #Initialization:
-    def __init__(self, ws, device_id):
+    def __init__(self, ws, device_id, device_params):
         self.device_id = device_id
         self.ws_connection = ws
+        self.params = device_params
 
     #Method to increment device_id:
     def increase_id(self, amt):
         self.device_id += amt
         print("new device_id: ", self.device_id)
 
-    def get_asycio_task_for_controller(self):
-        return(asyncio.create_task(self.run_controller(self.ws_connection)))
+    def set_update_interval(self, new_interval):
+        self.params['update_interval'] = new_interval
+
+    def run_controller_forever(self):
+        #Return a task to run the controller, by running the collect_and_transmit_periodically() method
+        return(asyncio.create_task(self.collect_and_transmit_periodically(self.ws_connection)))
 
     #Method to run the controller forever, sending out data periodicially:
-    async def run_controller(self, ws):
+    async def collect_and_transmit_periodically(self, ws):
         while True:
             print('Gathering sensor data...')
             [this_temp, this_pres] = await asyncio.gather(collect_temp_data(), collect_pres_data())
-            current_timestamp = datetime.now()
-            print("Sending current time and data...")
-            new_data = "device_id=" + str(self.device_id) + "  " + str(current_timestamp) + " : " + str(this_temp) + " | " + str(this_pres)
-            await ws.send(new_data)
-            print("Just sent new data: ", new_data)
-            await asyncio.sleep(5)
+            current_timestamp = str(datetime.now())
+            new_data = dict([('topic', 'new_data'), ('device_id', self.device_id), ('timestamp', current_timestamp), ('temp1', this_temp), ('pres1', this_pres)])
+            new_data_json = json.dumps(new_data)
+            #new_data = "device_id=" + str(self.device_id) + "  " + str(current_timestamp) + " : " + str(this_temp) + " | " + str(this_pres)
+            await ws.send(new_data_json)
+            print("Just sent new data: ", new_data_json)
+            print("now sleeping for " + str(self.params['update_interval']) + " seconds...")
+            await asyncio.sleep(self.params['update_interval'])
 
     # async def get_controller_task(self, ws):
     #     return(self.)
 
 async def listen_for_instructions(ws, device):
     while True:
-        response_msg = await ws.recv()
-        print("message received in func: ", response_msg)
-        device.increase_id(3)
+        msg_as_text = await ws.recv()
+        msg = json.loads(msg_as_text)
+        print("New message received: ", msg)
+        topic = msg.pop('topic')
+        if topic == 'receipt_confirmation':
+            print('Receipt of data confirmed by server!')
+        elif topic == 'hi':
+            print("just sayin hey")
+        elif topic == 'param_update':
+            print('Got the request!')
+            #TODO: make sure the update interval is actually valid
+            if msg['param_name'] == 'update_interval':
+                device.set_update_interval(float(msg['param_value']))
+
+        #device.increase_id(3)
 
 
 # def stop():
