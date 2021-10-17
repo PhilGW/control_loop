@@ -240,7 +240,6 @@ def get_mass(serial_port):
     except:
         return (None)
 
-
 def tare_balance(serial_port):
     serial_port.write(b"Z\r\n")  # Tare the balance by sending a Z
     # wait for a zero reading to indicate tare is complete:
