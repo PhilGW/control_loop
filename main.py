@@ -39,11 +39,6 @@ async def main():
         'green_led_pin': 17,
     }
 
-    # Define a thread that controls the device:
-    # #device_thread = threading.Thread(target=run_device,
-    #                                  args=(1, q_changes, q_outbox, device_params, data_log, data_table_name)
-    #                                  )
-
     #Example of a class-based object for this:
     #https://stackoverflow.com/questions/65684730/what-is-the-pythonic-way-of-running-an-asyncio-event-loop-forever
 
