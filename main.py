@@ -66,10 +66,8 @@ async def main():
     my_controller = DeviceController(ws, 1, device_params=device_params) #Instantiate the controller
     listen_task = asyncio.create_task( listen_for_instructions(ws, my_controller) )
 
-
     await my_controller.run_controller_forever()  #Create the task and run it. This will need to happen once for each controller.
     await listen_task #Listen, and relay any data to the controllers
-
     # TODO: Use asyncio.gather to call all of the sensors at once and then send the full message
     # TODO: Write device-io functions so that they use context manager methods (__enter__() and __exit__()) and can therefor be used with 'with'
 
@@ -106,8 +104,6 @@ class DeviceController():
             print("now sleeping for " + str(self.params['update_interval']) + " seconds...")
             await asyncio.sleep(self.params['update_interval'])
 
-    # async def get_controller_task(self, ws):
-    #     return(self.)
 
 async def listen_for_instructions(ws, device):
     while True:
